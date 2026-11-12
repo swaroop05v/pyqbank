@@ -1,0 +1,27 @@
+flowchart TB
+    UI["Browser: Next.js pages (React)<br/>student · faculty · admin"]
+    subgraph NextServer["Next.js server (Node.js)"]
+        direction LR
+        PX["proxy.ts<br/>JWT cookie + role guard"]
+        SC["Server components<br/>read-only queries"]
+        API["Route handlers /api/**<br/>writes inside transactions"]
+        EMB["embeddings.ts<br/>all-MiniLM-L6-v2, 384-d, local"]
+        PX --> SC
+        PX --> API
+        API <-->|"text → vector"| EMB
+        SC <-->|"search text → vector"| EMB
+    end
+    subgraph PG["PostgreSQL 16 + pgvector (single database)"]
+        direction LR
+        T["Relational tables<br/>keys + constraints"]
+        TR["Triggers + procedures<br/>repeat detector · integrity · audit"]
+        V["questions.embedding vector(384)<br/>HNSW index, cosine <=>"]
+        F["questions.body_tsv<br/>GIN index, full-text"]
+        VW["Views<br/>hot questions · weightage · summaries"]
+        T --> TR --> V
+    end
+    UI -->|HTTP| PX
+    API -->|"INSERT / UPDATE / CALL sp_*"| T
+    SC -->|"SELECT (views, joins)"| VW
+    SC -->|"full-text search"| F
+    SC -->|"vector search"| V
